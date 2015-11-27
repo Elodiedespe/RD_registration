@@ -5,7 +5,6 @@ import os
 import subprocess
 import scipy.signal
 import glob
-import shutil
 import pandas as pd
 import sys
 
@@ -44,7 +43,7 @@ def mri_to_ct(t1_nii, ct_nii, min_thr, output_dir, flip, verbose= 0):
     register_t1_nii = os.path.join(output_dir, "t1_to_cut_ct.nii.gz")
     transformation = os.path.join(output_dir, "t1_to_cut_ct.txt")
     t1_ct_nii = os.path.join(output_dir, "t1_to_ct.nii.gz")
-    ct_cut_reoriented_nii = os.path.join(output_dir, "ct_cut_reoriented.nii.gz")
+    ct_cut_reoriented_nii = os.path.join(output_dir, "ct_cut_brain_reorient.nii.gz")
     cut_brain_index_fileName = os.path.join(output_dir, "ct_brain_index.txt")
     
     # Load ct and modify the data for brain extraction
@@ -105,10 +104,12 @@ def mri_to_ct(t1_nii, ct_nii, min_thr, output_dir, flip, verbose= 0):
         t1_ct_reoriented_nii = reorient_image("XXYY", t1_ct_nii, output_dir)
     else:
         t1_ct_reoriented_nii = to_id(t1_ct_nii)
+    
+    
     return transformation, ct_cut_reoriented_nii, global_min_index
 
     
-def labels_to_ct( t1_nii, ct_cut_reoriented_nii, transformation, labels_nii, transform_warped, output_dir):
+def labels_to_ct(global_min_index, t1_nii, ct_cut_reoriented_nii, transformation, labels_nii, transform_warped, output_dir):
     """ Register the labels to the CT.
     """
 
@@ -116,6 +117,7 @@ def labels_to_ct( t1_nii, ct_cut_reoriented_nii, transformation, labels_nii, tra
     registered_labels_nii = os.path.join(output_dir, "labels_to_cut_ct.nii.gz")
     labels_ct_nii = os.path.join(output_dir, "labels_to_ct.nii.gz")
     convert_trans_itk = os.path.join(output_dir, "convert_trans_itk.txt")
+    labels_ct_native_nii = os.path.join(output_dir, "labels_to_ct_native.nii.gz")
     
 
     # Convert affine transformation from fsl2Ras (ants) 
@@ -169,18 +171,16 @@ def labels_to_ct( t1_nii, ct_cut_reoriented_nii, transformation, labels_nii, tra
     # Send the label to the native ct
     
     # Load the image
-    ct_data= nibabel.load(ct_nii).get_data()
+    ct_im = nibabel.load(ct_nii)
+    ct_data = ct_im.get_data()
     labels_data = nibabel.load(labels_ct_nii).get_data()
-    labels_shape = labels_data.shape()
-    ct_labels_data = numpy.zeros(ct_data.shape)
-    create_black_im = [ct_labels_data[0], ct_labels_data[1], range(global_min_index, ct_data.shape[2])] 
-
-    # Add range(global_min_index, ct_data.shape[2] to label image
-    labels_data = [labels_shape[0], labels_shape[1], labels_shape[2] + range(global_min_index, ct_data.shape[2])]
-    labels_ct_native_nii = nibabel.Nifti1Image(labels_data, ct_data.get_affine())
-    nibabel.save(labels_ct_native, labels_ct_native_nii)
+    labels_to_ct_native = numpy.zeros(ct_data.shape)
+    labels_to_ct_native[:, :, :global_min_index] = 0
+    labels_to_ct_native[:, :, global_min_index:] = labels_data
+    labels_ct_native_im = nibabel.Nifti1Image(labels_to_ct_native, ct_im.get_affine())
+    nibabel.save(labels_ct_native_im, labels_ct_native_nii)
     
-    return labels_ct_nii
+    return labels_ct_nii, labels_ct_native_nii
 
 
 def inverse_affine(affine):
@@ -297,9 +297,9 @@ if __name__ == "__main__":
     
     # get the appropriate labels
     
-    labels_2 = os.path.join(ATLAS_PATH, "atlas_0-2/ANTS2-0Years_brain_ANTS_LPBA40_atlas.nii.gz")
-    labels_5 = os.path.join(ATLAS_PATH, "atlas_5_9/ANTS9-5Years3T_brain_ANTS_LPBA40_atlas.nii.gz")
-    labels_2_5 = os.path.join(ATLAS_PATH, "atlas_2_5/ANTS2-5Years_brain_LPBA40_atlas.nii.gz")
+    labels_2 = os.path.join(ATLAS_PATH, "atlas_0-2/ANTS2-0Years_label_regis_head_trans.nii.gz")
+    labels_5 = os.path.join(ATLAS_PATH, "atlas_5_9/ANTS9-5Years3T_label_regis_head_trans.nii.gz")
+    labels_2_5 = os.path.join(ATLAS_PATH, "atlas_2_5/ANTS2-5Years_label_regis_head_trans.nii.gz")
 
 
     # Keep the valid subject
@@ -315,7 +315,7 @@ if __name__ == "__main__":
                          
 
     # Go through all subjects
-    for subject_path in valid_subject_dirs[15:17]:
+    for subject_path in valid_subject_dirs:
         #subject_path = os.path.join(nii_path, 'sujet_024_VM')
         print "Processing: '{0}'...".format(subject_path)
         
@@ -349,8 +349,8 @@ if __name__ == "__main__":
         flip = df_subjects.check_flip[df_subjects.anonym_nom == subj_id].values[0]
         
         # Get the t1, the inv_trans (from atlas to t1), the rd and the ct of the patient
-        t1_nii = glob.glob(os.path.join(subject_path, "mri", "*", subj_id + '_T1.nii'))[0]
-        ct_nii = glob.glob(os.path.join(subject_path, "ct", "*.nii.gz"))[0]
+        t1_nii = glob.glob(os.path.join(subject_path, "mri", "*", subj_id + '_T1.nii'))
+        ct_nii = glob.glob(os.path.join(subject_path, "ct", "*", subj_id + "_ct.nii.gz"))
         rd_nii = glob.glob(os.path.join(subject_path, "rd", "*.nii"))[0]
         transform_warped = os.path.join(subject_path, "transform_warped", "transformInverseComposite.h5")
         
@@ -360,17 +360,25 @@ if __name__ == "__main__":
 
         print "Executing: %s" % (transform_warped)
         
-        """
+        ct_cut_brain = os.path.join(output_dir, 'ct_cut_brain.nii.gz')
+        cut_brain_index_fileName = os.path.join(output_dir, "ct_brain_index.txt")
+        cut_brain_index_file = open(cut_brain_index_fileName, "r")
+        cut_brain_index = int(cut_brain_index_file.read())
+        cut_brain_index_file.close()
+        
         if not os.path.isfile(os.path.join(output_dir, "ct_cut_brain.nii.gz")):
             transformation, ct_cut_reoriented_nii, cut_brain_index = mri_to_ct(t1_nii, ct_nii, 50000, output_dir, flip, verbose=0)
         else:
             print "MRI to ct transformation already processed"
-
+        
+                 
+        """
         if not os.path.isfile(os.path.join(output_dir, "labels_to_ct.nii.gz")):
-            labels_ct_nii = labels_to_ct(t1_nii, ct_cut_reoriented_nii, transformation, template_labels, transform_warped, output_dir)
+            labels_ct_nii = labels_to_ct(cut_brain_index, t1_nii, ct_cut_reoriented_nii, transformation, template_labels, transform_warped, output_dir)
         else:
             print "Labels to ct trabsformation already processed"
-        """
+       
+       
         ct_cut_brain = os.path.join(output_dir, 'ct_cut_brain.nii.gz')
         cut_brain_index_fileName = os.path.join(output_dir, "ct_brain_index.txt")
         cut_brain_index_file = open(cut_brain_index_fileName, "r")
@@ -386,20 +394,18 @@ if __name__ == "__main__":
                    'sujet_027_BL': 1.292, 'sujet_028_CH': 1,
                    'sujet_029_CT': 1.21,
                    'sujet_032_HB': 1.053, 'sujet_033_HL': 1.174,
-                   'sujet_034_HI': 1, 'sujet_038_ZH': 1}
+                   'sujet_034_HI': 1, 'sujet_038_ZH': 1
+                   'sujet_012_OY':1.65}
 
         if not os.path.isfile(os.path.join(output_dir, "ct_rescale.nii.gz")):
             ct_rescale_file = ct_to_rd(ct_cut_brain, rd_nii, correct[subj_id], output_dir)
         else:
             print "ct to rd transformation already processed"
 
-        """
+       
         if not os.path.isfile(os.path.join(output_dir, "labels_to_rd.nii.gz")):
             labels_rd_nii = labels_to_rd(rd_nii, labels_ct_nii, output_dir)
         else:
             print "labels to rd transformation already processed"
+        
         """
-        
-       
-        
-
