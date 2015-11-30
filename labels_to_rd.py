@@ -97,8 +97,8 @@ if __name__ == "__main__":
 
 
     # Global parameters
-    BASE_PATH = "/home/mfpgt/Desktop/RD_registration/test_we_28_11_15"
-    ATLAS_PATH = "/home/mfpgt/Desktop/RD_registration/test_we_28_11_15/atlas"
+    BASE_PATH = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence"
+    ATLAS_PATH = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/atlas"
     nii_path = os.path.join(BASE_PATH, "sujet_18_rt")
     output_path = os.path.join(BASE_PATH, "results_from_label_to_rd_after_ants")
     subjects_csv = os.path.join(nii_path, "clinical_data.csv")
@@ -124,7 +124,7 @@ if __name__ == "__main__":
 
 
     # Go through all subjects
-    for subject_path in valid_subject_dirs:
+    for subject_path in valid_subject_dirs[3:4]:
         #subject_path = os.path.join(nii_path, 'sujet_024_VM')
         print "Processing: '{0}'...".format(subject_path)
 
@@ -173,15 +173,15 @@ if __name__ == "__main__":
         # Correct the Rzz in the ct affine to find the correct correspondance in the physical coordonnates
         correct = {'sujet_005_BZ': 1.21, 'sujet_007_MM': 1.21,
                    'sujet_010_SA': 1.21, 'sujet_011_PA': 1,
-                   'sujet_014_WS': 1, 'sujet_015_MI': 1.21,
+                   'sujet_014_WS': 1, 'sujet_015_NI': 1.21,
                    'sujet_016_DG': 0.997, 'sujet_017_AG': 1.396,
                    'sujet_022_SK': 1, 'sujet_024_VM': 1.334,
                    'sujet_027_BL': 1.292, 'sujet_028_CH': 1,
                    'sujet_029_CT': 1.21,
                    'sujet_032_HB': 1.053, 'sujet_033_HL': 1.174,
-                   'sujet_034_HI': 1, 'sujet_038_ZH': 1
+                   'sujet_034_HI': 1, 'sujet_038_ZH': 1,
                    'sujet_012_OY':1.65}
 
+        labels_ct_native_nii = os.path.join(output_dir,"labels_to_ct_native.nii.gz" )
 
-
-        labels_rd_nii = labels_to_rd(labels_ct_native_nii, rd_nii, correct[subj_id], output_dir)
+    labels_rd_nii = labels_to_rd(labels_ct_native_nii, rd_nii, correct[subj_id], output_dir)
