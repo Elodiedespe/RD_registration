@@ -99,8 +99,8 @@ if __name__ == "__main__":
 
 
     # Global parameters
-    BASE_PATH = "/home/mfpgt/Desktop/RD_registration/test_we_28_11_15"
-    ATLAS_PATH = "/home/mfpgt/Desktop/RD_registration/test_we_28_11_15/atlas"
+    BASE_PATH = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence"
+    ATLAS_PATH = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/atlas"
     nii_path = os.path.join(BASE_PATH, "sujet_18_rt")
     output_path = os.path.join(BASE_PATH, "results_from_label_to_rd_after_ants")
     subjects_csv = os.path.join(nii_path, "clinical_data.csv")
@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
 
     # Go through all subjects
-    for subject_path in valid_subject_dirs[1:4]:
+    for subject_path in valid_subject_dirs[1:9]:
         #subject_path = os.path.join(nii_path, 'sujet_024_VM')
         print "Processing: '{0}'...".format(subject_path)
 
