@@ -28,8 +28,8 @@ def registerVolume(reference, Volume, mode, outputTrm, outputITrm):
 
 def composeTransformation(trmFile1, trmFile2, outputTrm):
     command = 'AimsComposeTransformation ' + \
-              ' -i ' + trmFile1 + \
-              ' -j ' + trmFile2 + \
+              ' -i ' + trmFile2 + \
+              ' -j ' + trmFile1 + \
               ' -o ' + outputTrm
     #print "Executing: ", command
     os.system(command)
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     df_subjects = pd.read_csv(subjects_csv)
     subjects = df_subjects['anonym_nom'].values
 
-    for subject in subjects[14:15]:
+    for subject in subjects[4:5]:
         subject_path = os.path.join(SUBJECTS_DATA_PATH, subject)
         age = df_subjects.ART[df_subjects['anonym_nom'] == subject].values[0]
 
