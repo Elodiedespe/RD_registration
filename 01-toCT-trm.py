@@ -91,7 +91,7 @@ if __name__ == "__main__":
     df_subjects = pd.read_csv(subjects_csv)
     subjects = df_subjects['anonym_nom'].values
 
-    for subject in subjects[4:5]:
+    for subject in subjects:
         subject_path = os.path.join(SUBJECTS_DATA_PATH, subject)
         age = df_subjects.ART[df_subjects['anonym_nom'] == subject].values[0]
 
@@ -100,6 +100,7 @@ if __name__ == "__main__":
             t1File = os.path.join(subject_path, subject +"_T1.nii.gz")
             rdFile = os.path.join(subject_path, subject +"_rd.nii.gz")
             t1TOct_trm = os.path.join(subject_path, 't1_To_ct.trm')
+       
 
             # Register atlas template into ct referential
             #################################################
@@ -112,4 +113,6 @@ if __name__ == "__main__":
 
         else:
             print "path %s does not exist" % subject_path
+            continue
+            
         

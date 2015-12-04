@@ -112,7 +112,6 @@ def createDensityMask(bundleFile, scalarVolume, tmpdir, output_fileName):
               % (bundleFile, scalarVolume_S16, output_fileName))
     os.remove(scalarVolume_S16)
     os.remove(scalarVolume_S16 + '.minf')
-    os.remove(scalarVolume_S16[:-4] + '.dim')
     return output_fileName
 
 
@@ -262,10 +261,8 @@ def statistics(scalarVolume, densityMask, sectionMask, bundleName, output_dir):
                                            output_dir)
             stats[section] = weighted_mean(scalarVolume, densityMask_label)
 
-            fileTrashList =  glob.glob(os.path.join(output_dir,
-                                                    sectionMask_label, '.*')) + \
-                             glob.glob(os.path.join(output_dir,
-                                                    densityMask_label, '.*'))
+            fileTrashList =  glob.glob(sectionMask_label.split('.')[0] + '.*') + \
+                             glob.glob(densityMask_label.split('.')[0] + '.*')
             for fileTrash in fileTrashList:
                 os.remove(fileTrash)
 
@@ -309,7 +306,7 @@ def stats_rd(scalarVolume, bundleFile, bundleName,
 
 if __name__ == "__main__":
 
-    ROOT_PATH = '/volatile/pinaud/elodie_dosimetry'
+    ROOT_PATH = '/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/elodie_dosimetry'
     TRANSFO_PATH = os.path.join(ROOT_PATH, '01-TO_CT')
     DATA_PATH = os.path.join(ROOT_PATH, 'subjects_data')
     ATLAS_PATH = os.path.join(ROOT_PATH, 'Atlas_Pediatric_2Hemispheres')
@@ -320,7 +317,7 @@ if __name__ == "__main__":
 
     ####################
     ## Read Subjects csv
-    INPUT_SUBJECTS_CSV = os.path.join(ROOT_PATH, 'subjects_data.csv')
+    INPUT_SUBJECTS_CSV = os.path.join(ROOT_PATH, 'clinical_data.csv')
     df_subjects = pd.read_csv(INPUT_SUBJECTS_CSV)
     subjects = df_subjects['anonym_nom'].values
 
@@ -352,13 +349,15 @@ if __name__ == "__main__":
 
     for idx in df_subjects[df_subjects.RT > 0].index:
         cur = df_subjects.loc[idx]
-        subject = cur.Subject
+        subject = cur.anonym_nom
         age = cur.age_today
         chimio = cur.Traitement
         print "subject: ", subject
 
         SUBJECT_DATA_PATH = os.path.join(DATA_PATH, subject)
-        rdFile = os.path.join(SUBJECT_DATA_PATH, 'rd',
+        if not os.path.exists(SUBJECT_DATA_PATH):
+            continue
+        rdFile = os.path.join(SUBJECT_DATA_PATH,
                               '%s_rd.nii.gz' % subject)
         template_to_ct_trm = os.path.join(TRANSFO_PATH, subject,
                                           'Template_To_CT.trm')
@@ -385,10 +384,18 @@ if __name__ == "__main__":
             if not os.path.exists(DENSITYMASK_SUBJ_PATH):
                 os.mkdir(DENSITYMASK_SUBJ_PATH)
 
+
+            OUTPUT_SUBJ_MEAN_PATH = os.path.join(OUTPUT_MEAN_PATH, subject,
+                                                 bundleType, segment) 
+            for i, dir in enumerate( OUTPUT_SUBJ_MEAN_PATH.split('/')[-4:-1]):
+                if not os.path.exists('/'.join( OUTPUT_SUBJ_MEAN_PATH.split('/')[:-3+i])):
+                    os.mkdir('/'.join( OUTPUT_SUBJ_MEAN_PATH.split('/')[:-3+i]))
+            if not os.path.exists( OUTPUT_SUBJ_MEAN_PATH):
+                os.mkdir( OUTPUT_SUBJ_MEAN_PATH)
+                
             OUTPUT_SUBJ_PROFILE_PATH = os.path.join(OUTPUT_PROFILE_PATH, subject,
                                                  bundleType, segment)
-            OUTPUT_SUBJ_MEAN_PATH = os.path.join(OUTPUT_MEAN_PATH, subject,
-                                                 bundleType, segment)
+          
             for i, dir in enumerate(OUTPUT_SUBJ_PROFILE_PATH.split('/')[-4:-1]):
                 if not os.path.exists('/'.join(OUTPUT_SUBJ_PROFILE_PATH.split('/')[:-3+i])):
                     os.mkdir('/'.join(OUTPUT_SUBJ_PROFILE_PATH.split('/')[:-3+i]))
@@ -396,7 +403,7 @@ if __name__ == "__main__":
                 os.mkdir(OUTPUT_SUBJ_PROFILE_PATH)
 
             TMP_PATH = os.path.join(OUTPUT_MEAN_PATH, subject,
-                                    bundleType)
+                                    bundleType, 'tmp')
             if not os.path.exists(TMP_PATH):
                 os.mkdir(TMP_PATH)
 
@@ -427,7 +434,7 @@ if __name__ == "__main__":
                                  mean[1]
                 df_mean.to_csv(os.path.join(OUTPUT_SUBJ_MEAN_PATH, '%s_RD.csv'
                                             % bundleName),
-                               index=False)
+                            index=False)
 
                 df_profile = pd.DataFrame(columns=columns)
                 for i, item in enumerate(profile.iteritems()):
@@ -449,6 +456,7 @@ if __name__ == "__main__":
                      [os.path.join(TMP_PATH, f) for f in os.listdir(TMP_PATH)
                       if bundleName in f]
         for trashFile in trashFiles:
-            os.remove(trashFile)
+            if os.path.isfile(trashFile):
+                os.remove(trashFile)
 
     shutil.rmtree(TMP_PATH)
