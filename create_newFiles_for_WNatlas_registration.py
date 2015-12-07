@@ -23,7 +23,9 @@ def reorient_image(input_axes, in_file, typeFile, output_dir):
 if __name__ == "__main__":
 
     path_t1 = '/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/bundle_rd/sujet_18_rt'
-    path_RDCT = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/ct_labels_processing"
+    path_CT = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/results_from_label_to_rd_after_ants"
+    #path_CT = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/ct_labels_processing"
+    path_RD = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/ct_labels_processing"
     output_path = os.path.join("/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/bundle_rd/WM_Atlas")
     subjects_csv = os.path.join(path_t1, "clinical_data.csv")
 
@@ -39,10 +41,11 @@ if __name__ == "__main__":
         
             subj_id = os.path.basename(subject_path)
             print subj_id
-
+            
             t1_nii = os.path.join(subject_path, "mri", subj_id + '_T1.nii')
-            ct_nii = os.path.join(path_RDCT, subj_id, "ct", "ct_cut_brain.nii.gz")
-           
+            #ct_nii = os.path.join(path_RDCT, subj_id, "ct", "ct_cut_brain.nii.gz")
+            ct_nii = os.path.join(path_CT, subj_id, "ct_cut_brain.nii.gz")
+            
             if os.path.exists(ct_nii):
                 print(subj_id + " have good ct")
                 
@@ -50,11 +53,12 @@ if __name__ == "__main__":
                 print (subj_id + " no ct") 
                 continue 
         
-            rd_nii = os.path.join(path_RDCT, subj_id, "ct", "rd_rescale_brain.nii.gz")
-        
+           # rd_nii = os.path.join(path_RDCT, subj_id, "ct", "rd_rescale_brain.nii.gz")
+            rd_nii = os.path.join(path_RD, subj_id, "ct", "rd_rescale_brain.nii.gz")
         
             output_dir = os.path.join(output_path, subj_id)
             if not os.path.isdir(output_dir):
+                print(subj_id + "don't have a directory")
                 os.makedirs(output_dir)
             
             # Flip the rd and the ct

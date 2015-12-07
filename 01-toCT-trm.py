@@ -107,9 +107,8 @@ if __name__ == "__main__":
             toCT_subject_path = os.path.join(TO_CT_PATH, subject)
             if not os.path.exists(toCT_subject_path):
                 os.mkdir(toCT_subject_path)
-    
-            template_to_ct(templateT1, t1File, ctFile, t1TOct_trm,
-                           toCT_subject_path)
+            if not os.path.isfile(os.path.join(toCT_subject_path, 'Template_To_T1.trm')):
+                template_to_ct(templateT1, t1File, ctFile, t1TOct_trm, toCT_subject_path)
 
         else:
             print "path %s does not exist" % subject_path

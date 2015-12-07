@@ -54,5 +54,8 @@ if __name__ == "__main__":
             print (subj_id + " ct found")
             continue    
         
-        transfo_output = transformation(transfo_input, direction, source, output_dir)
+        if not os.path.isfile(os.path.join(output_dir, "t1_To_ct.trm")):
+            transfo_output = transformation(transfo_input, direction, source, output_dir)
+        else:
+            print ("convertion already processed")
                           
