@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
 
     # Go through all subjects
-    for subject_path in valid_subject_dirs[1:9]:
+    for subject_path in valid_subject_dirs:
         #subject_path = os.path.join(nii_path, 'sujet_024_VM')
         print "Processing: '{0}'...".format(subject_path)
 
@@ -163,22 +163,27 @@ if __name__ == "__main__":
         ct_nii = glob.glob(os.path.join(subject_path, "ct", subj_id + "_ct.nii.gz"))[0]
         rd_nii = glob.glob(os.path.join(subject_path, "rd", "*.nii"))[0]
         transform_warped = os.path.join(subject_path, "transform_warped", "transformInverseComposite.h5")
-
+        
         if flip == 1:
              ct_cut_reoriented_nii = os.path.join(output_dir, "ct_cut_brain_reorient.nii.gz")
         else:
              ct_cut_reoriented_nii = os.path.join(output_dir, "ct_cut_brain.nii.gz")
         print "NO flip"
+        
+        if os.path.isfile(os.path.join(output_dir, 'ct_cut_brain.nii.gz')):
+            print("ok")
+        elif os.path.isfile(os.path.join(output_dir, 'ct_cut_brain.nii.gz')):
+            print("ok2")
+        else:
+            continue
 
         transformation= os.path.join(output_dir, "t1_to_cut_ct.txt")
 
         print "Executing: %s" % (t1_nii)
         print "Executing: %s" % (ct_nii)
         print "Executing: %s" % (rd_nii)
-
         print "Executing: %s" % (transform_warped)
 
-        ct_cut_brain = os.path.join(output_dir, 'ct_cut_brain.nii.gz')
         cut_brain_index_fileName = os.path.join(output_dir, "ct_brain_index.txt")
         cut_brain_index_file = open(cut_brain_index_fileName, "r")
         cut_brain_index = int(cut_brain_index_file.read())

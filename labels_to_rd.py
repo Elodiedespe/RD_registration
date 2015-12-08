@@ -124,7 +124,7 @@ if __name__ == "__main__":
 
 
     # Go through all subjects
-    for subject_path in valid_subject_dirs[3:4]:
+    for subject_path in valid_subject_dirs:
         #subject_path = os.path.join(nii_path, 'sujet_024_VM')
         print "Processing: '{0}'...".format(subject_path)
 
@@ -183,5 +183,7 @@ if __name__ == "__main__":
                    'sujet_012_OY':1.65}
 
         labels_ct_native_nii = os.path.join(output_dir,"labels_to_ct_native.nii.gz" )
-
-    labels_rd_nii = labels_to_rd(labels_ct_native_nii, rd_nii, correct[subj_id], output_dir)
+        if not os.path.isfile(os.path.join(output_dir,"labels_to_ct_native.nii.gz" )):
+            continue
+        else:
+		labels_rd_nii = labels_to_rd(labels_ct_native_nii, rd_nii, correct[subj_id], output_dir)
