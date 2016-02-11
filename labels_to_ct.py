@@ -172,7 +172,7 @@ if __name__ == "__main__":
         
         if os.path.isfile(os.path.join(output_dir, 'ct_cut_brain.nii.gz')):
             print("ok")
-        elif os.path.isfile(os.path.join(output_dir, 'ct_cut_brain.nii.gz')):
+        elif os.path.isfile(os.path.join(output_dir, 'ct_cut_brain_reorient.nii.gz')):
             print("ok2")
         else:
             continue
