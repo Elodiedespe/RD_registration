@@ -23,7 +23,7 @@ def read_roiLabel(xml_path):
         # print rank, name
         roi_label.append(rank)
 
-    roi_label=map(int,roi_label)
+    roi_label = [int(r) for r in roi_label]
 
     return name, rank, roi_label
 
@@ -84,11 +84,11 @@ if __name__ == '__main__':
 				Roi==r][VD])
 			## Fit and summary:
     		model_GRT = sm.OLS(Y, X).fit()
+    		print (" %s Regression sans effet global RT" % (r))
     		# print ("%s Regression sans effet global RT" % (VD))
     		# print (" %s Regression sans effet global RT" % (r))
-    		assert 0, r
     		print(model_GRT.summary())
-
+    		continue
     		# concatenate all the results into a list
     		"""for resGRT in model_GRT:
     			low, upp = res.confint().T   # unpack columns 
