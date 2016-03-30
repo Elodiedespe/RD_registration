@@ -66,7 +66,7 @@ if __name__ == '__main__':
         plt.plot(x, yhat, 'r-', x, y, 'o')
         plt.xlabel('Global mean')
         plt.ylabel(VD)
-        # plt.show()
+        plt.show()
 
         # New dataframe for VD without global effect
         df_roi = pd.DataFrame(columns = ['Roi', VD, 'AgeAuDiagnostic', "meanRoi", "CSP"])
