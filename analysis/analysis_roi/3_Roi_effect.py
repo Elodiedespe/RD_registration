@@ -40,7 +40,14 @@ if __name__ == '__main__':
     
 # List of VD
     VDs = ["dQIT", "dQIP", "dQIV", "dIMT", "dIVT", "dCubes", "dVocabulaire"]
-
+    
+    for VD in VDs:
+        #load the dataframe and set the seaborn
+        df_behavioural= df_data[(df_data.last_delta==1)][["Patients", VD, "Traitement", "AgeAtDiagnosis", "CSP"]]
+        sns.set(style="whitegrid", color_codes=True)
+        
+        sns.barplot(x="Traitement", y=VD, data=df_behavioural)       
+        plt.show()
     for VD in VDs:
         # Slect the dataframe
         df = df_data[(df_data.last_delta==1) & (df_data.RT=="YES")][["Patients", VD, "mean", "Global_mean", "label", "AgeAtDiagnosis", "CSP"]]
@@ -75,9 +82,11 @@ if __name__ == '__main__':
         # Create list for roi
         name, rank, roi_label = read_roiLabel(xml_path)
 
-        # Run the multiple regression models for each Roi
+        # Write the result into a txt file
         f_wthgl = open(os.path.join('elusion.txt'), 'w')
         f_wgl = open(os.path.join('aloa.txt'), 'w')
+
+        # Run the multiple regression models for each Roi
 
         for cnt, r in enumerate(roi_label):
             # print "print handling roi %i" % r
@@ -92,12 +101,7 @@ if __name__ == '__main__':
             print(model_GRT.summary())
             f_wthgl.write(VD)
             f_wthgl.write(str(model_GRT.summary()))
-            # concatenate all the results into a list
-            """for resGRT in model_GRT:
-                low, upp = res.confint().T   # unpack columns 
-                res_all.append(numpy.concatenate(([resGRT.llf], resGRT.params, resGRT.tvalues, resGRT.pvalues, 
-                                   low, upp)))"""
-
+           
             X1 = np.array(df_drop[df_drop.label==r][['AgeAtDiagnosis', 'mean',"CSP"]])
             Y1 = np.array(df_drop[df_drop.label==r][VD])
             ## Fit and summary:
@@ -105,20 +109,18 @@ if __name__ == '__main__':
             print (" %s Regression avec effet global RT" % (VD))  
             print (" %s Regression avec effet global RT" % (r))
             print(model_SGRT.summary())
-            pvals = model_SGRT.pvalues
-            #f_wgl.write(VD)
-            #f_wgl.write(str(model_SGRT.summary()))
-
-            # concatenate all the results into a list
-            """for resSGRT in model_SGRT:
-                low, upp = resSGRT.confint().T   # unpack columns 
-                res_all.append(numpy.concatenate(([resSGRT.llf], resSGRT.params, resSGRT.tvalues, resSGRT.pvalues, 
-                                   low, upp)))"""
-
-            pvals_fwer = multicomp.multipletests(pvals, alpha = 0.05, method = 'bonferroni')
             
+            # Print the OLS table 
+            f_wgl.write(VD)
+            f_wgl.write(str(model_SGRT.summary()))
+
+            # Correction of multiple comparaison with Bonferronin
+            pvals = model_SGRT.pvalues
+            pvals_fwer = multicomp.multipletests(pvals, alpha = 0.05, method = 'bonferroni')
+
+            # concatenate all the results into a pd dataframe
             df_final.loc[len(df_final)] = [VD, r, model_SGRT.params, model_SGRT.pvalues, pvals_fwer[1], pvals_fwer[0]]
 
-    f_wgl.write(str(resSGRT))
+    
     f_wthgl.close()
     f_wgl.close()
