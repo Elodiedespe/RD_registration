@@ -63,4 +63,25 @@ if __name__ == '__main__':
                 # concatenate all the results into a pd dataframe
                 df_final_bundle.loc[len(df_final_bundle)] = [VD, r, lat, model_Bundles.params, model_Bundles.pvalues, pvals_fwer[1], pvals_fwer[0]]
 
- 
+        # Select x and y
+        """y, x = df_drop[VD], df_drop["mean"]
+
+        # Run the regression
+        beta, beta0, r_value, p_value, std_err = stats.linregress(x, y)
+        print("y=%f x + %f, r:%f, r-squared:%f, \np-value:%f, std_err:%f"
+        % (beta, beta0, r_value, r_value**2, p_value, std_err))
+
+        # Plot the line
+        yhat = beta * x + beta0  # regression line
+        plt.plot(x, yhat, 'r-', x, y, 'o')
+        plt.xlabel('mean')
+        plt.ylabel(VD)
+        plt.show()"""
+        
+        """
+        # New dataframe for VD without global effect
+        df_bunble = pd.DataFrame(columns = ['Bundle', VD, 'AgeAuDiagnostic', "meanBundle", "CSP"])
+        df_bunble['Bundle'] = df_drop["Bundle"]
+        df_bunble['AgeAuDiagnostic'] = df_drop["AgeAtDiagnosis"]
+        df_bunble['meanBundle'] = df_drop["mean"]
+        df_bunble['CSP'] = df_drop["CSP"]"""
