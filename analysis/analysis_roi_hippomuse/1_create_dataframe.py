@@ -1,13 +1,5 @@
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import os
-from scipy import stats
-import statsmodels.formula.api as smfrmla
-import statsmodels.api as sm
-import xml.etree.ElementTree as ET
-import statsmodels.sandbox.stats.multicomp as multicomp
 
 
 dfInput = pd.read_csv("/home/edogerde/Bureau/Hippomuse/patients_hippomuse/results_38.csv")
