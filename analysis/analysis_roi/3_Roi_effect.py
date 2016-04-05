@@ -27,6 +27,19 @@ def read_roiLabel(xml_path):
 
     return name, rank, roi_label
 
+def get_roi_mask(roi_filename, label_number):
+    mask1 = nib.load(roi_filename)
+    roi_affine = mask1.get_affine()
+    mask= mask1.get_data()  
+    mask = mask.reshape(mask.shape[0:3])
+
+    mask = mask == label_number
+    roi_nii = nib.Nifti1Image(mask.astype(np.int8), roi_affine)
+
+    nib.save(roi_nii,os.path.join(maskfile,"%s.nii.gz"%(label_number)))
+    return mask , roi_nii
+
+
 
 if __name__ == '__main__':
 
@@ -36,9 +49,17 @@ if __name__ == '__main__':
 
     resSGRT = []
     
-    df_final= pd.DataFrame(columns=['Score','roi', 'coeff', 'pvalue' , 'pval_bonferroni', 'signi_bonferonni'])
+    # Path for plotting.plot_roi
+    atlas_nii = "/home/edogerde/Bureau/Atlas_plt_roi/atlas.nii.gz"
+    anat_nii = "/home/edogerde/Bureau/Atlas_plt_roi/anat.nii"
+    maskfile = "/home/edogerde/Bureau/Atlas_plt_roi"
     
+    df_final= pd.DataFrame(columns=['Score','roi', 'coeff', 'pvalue' , 'pval_bonferroni', 'signi_bonferonni', 'Rsquare'])
+    df_final_GR= pd.DataFrame(columns=['Score','roi', 'coeff', 'pvalue' , 'pval_bonferroni', 'signi_bonferonni', 'Rsquare'])
+    f_regression = open(os.path.join('regressionGlobalmeanScoresQi.txt'), 'w')
+
 # List of VD
+    #VDs = ["QIT", "QIP", "QIV", "IMT", "IVT", "Cubes", "Vocabulaire"]
     VDs = ["dQIT", "dQIP", "dQIV", "dIMT", "dIVT", "dCubes", "dVocabulaire"]
     
     for VD in VDs:
@@ -47,26 +68,29 @@ if __name__ == '__main__':
         sns.set(style="whitegrid", color_codes=True)
         
         sns.barplot(x="Traitement", y=VD, data=df_behavioural)       
-        plt.show()
+        #plt.show()
     for VD in VDs:
         # Slect the dataframe
         df = df_data[(df_data.last_delta==1) & (df_data.RT=="YES")][["Patients", VD, "mean", "Global_mean", "label", "AgeAtDiagnosis", "CSP"]]
+        #df = df_data[(df_data.Rang==1) & (df_data.RT=="YES")][["Patients", VD, "mean", "Global_mean", "label", "AgeAtDiagnosis", "CSP"]]
         df_drop = df.dropna(subset=[VD])
 
-        # Select x and y
+        # Select x and y 
         y, x = df_drop[VD], df_drop["Global_mean"]
 
         # Run the regression
         beta, beta0, r_value, p_value, std_err = stats.linregress(x, y)
         print("y=%f x + %f, r:%f, r-squared:%f, \np-value:%f, std_err:%f"
         % (beta, beta0, r_value, r_value**2, p_value, std_err))
-
+        
+        f_regression.write(str("Global_mean %s, y=%f x + %f, r:%f, r-squared:%f, \np-value:%f, std_err:%f"
+        % (VD, beta, beta0, r_value, r_value**2, p_value, std_err)))
         # Plot the line
         yhat = beta * x + beta0  # regression line
         plt.plot(x, yhat, 'r-', x, y, 'o')
         plt.xlabel('Global mean')
         plt.ylabel(VD)
-        plt.show()
+        #plt.show()
 
         # New dataframe for VD without global effect
         df_roi = pd.DataFrame(columns = ['Roi', VD, 'AgeAuDiagnostic', "meanRoi", "CSP"])
@@ -82,45 +106,49 @@ if __name__ == '__main__':
         # Create list for roi
         name, rank, roi_label = read_roiLabel(xml_path)
 
-        # Write the result into a txt file
-        f_wthgl = open(os.path.join('elusion.txt'), 'w')
-        f_wgl = open(os.path.join('aloa.txt'), 'w')
-
         # Run the multiple regression models for each Roi
 
         for cnt, r in enumerate(roi_label):
             # print "print handling roi %i" % r
             X = np.array(df_roi[df_roi.Roi==r][['AgeAuDiagnostic', 'meanRoi', "CSP"]])
+            #X = np.array(df_roi[df_roi.Roi==r]['meanRoi'])
             Y = np.array(df_roi[df_roi.
                 Roi==r][VD])
             # Fit and summary:
             model_GRT = sm.OLS(Y, X).fit()
-            print (" %s Regression sans effet global RT" % (r))
-            print (" %s Regression sans effet global RT" % (VD))
-            print (" %s Regression sans effet global RT" % (r))
             print(model_GRT.summary())
-            f_wthgl.write(VD)
-            f_wthgl.write(str(model_GRT.summary()))
+
+            # Correction of multiple comparaison with Bonferronin
+            pvals_GR = model_GRT.pvalues
+            pvals_GR_fwer = multicomp.multipletests(pvals_GR, alpha = 0.05, method = 'bonferroni')
            
+
+
             X1 = np.array(df_drop[df_drop.label==r][['AgeAtDiagnosis', 'mean',"CSP"]])
+            #X1 = np.array(df_drop[df_drop.label==r]["mean"])
             Y1 = np.array(df_drop[df_drop.label==r][VD])
             ## Fit and summary:
             model_SGRT = sm.OLS(Y1, X1).fit()
-            print (" %s Regression avec effet global RT" % (VD))  
-            print (" %s Regression avec effet global RT" % (r))
             print(model_SGRT.summary())
-            
-            # Print the OLS table 
-            f_wgl.write(VD)
-            f_wgl.write(str(model_SGRT.summary()))
 
             # Correction of multiple comparaison with Bonferronin
             pvals = model_SGRT.pvalues
             pvals_fwer = multicomp.multipletests(pvals, alpha = 0.05, method = 'bonferroni')
 
-            # concatenate all the results into a pd dataframe
-            df_final.loc[len(df_final)] = [VD, r, model_SGRT.params, model_SGRT.pvalues, pvals_fwer[1], pvals_fwer[0]]
+            pval_roi = pvals_fwer[0]
+            
+            if pval_roi[1:2].astype(str) == "False":
+                
+                mask, roi_nii = get_roi_mask(atlas_nii, label_number)
+                output= os.path.join(maskfile,"%s.png"%(label_number))
+                plotting.plot_roi(roi_nii, anat_nii, output_file= output, title="plot_roi %s"%(label_number))
+            
+            else:
+                continue
 
-    
-    f_wthgl.close()
-    f_wgl.close()
+            # concatenate all the results into a pd dataframe
+            df_final.loc[len(df_final)] = [VD, r, model_SGRT.params, model_SGRT.pvalues, pvals_fwer[1], pvals_fwer[0], model_SGRT.rsquared]
+            df_final_GR.loc[len(df_final)] = [VD, r, model_GRT.params, model_GRT.pvalues, pvals_GR_fwer[1], pvals_GR_fwer[0], model_SGRT.rsquared]
+
+
+    f_regression.close()
