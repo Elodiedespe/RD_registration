@@ -5,6 +5,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os
+import scipy
 from scipy import stats
 import statsmodels.formula.api as smfrmla
 import statsmodels.api as sm
@@ -54,9 +55,12 @@ if __name__ == '__main__':
     anat_nii = "/home/edogerde/Bureau/Atlas_plt_roi/anat.nii"
     maskfile = "/home/edogerde/Bureau/Atlas_plt_roi"
     
-    df_final= pd.DataFrame(columns=['Score','roi', 'coeff', 'pvalue' , 'pval_bonferroni', 'signi_bonferonni', 'Rsquare'])
+    df_final= pd.DataFrame(columns=['Score','roi', 'coeff', 't value', 'pvalue' , 'pval_bonferroni', 'signi_bonferonni', 'Rsquare', 'std'])
     df_final_GR= pd.DataFrame(columns=['Score','roi', 'coeff', 'pvalue' , 'pval_bonferroni', 'signi_bonferonni', 'Rsquare'])
     f_regression = open(os.path.join('regressionGlobalmeanScoresQi.txt'), 'w')
+    df_ScoreGlobalmean = pd.DataFrame(columns=['variable','test', 'coeff', 'r_squared' , 'p_value', 'std_err'])
+    df_corr = pd.DataFrame(columns=['variable','test', 'coeff', 'p_value'])
+    df_corrAgDvsRt = pd.DataFrame(columns=['variable','test', 'coeff', 'p_value'])
 
 # List of VD
     #VDs = ["QIT", "QIP", "QIV", "IMT", "IVT", "Cubes", "Vocabulaire"]
@@ -69,11 +73,13 @@ if __name__ == '__main__':
         
         #sns.barplot(x="Traitement", y=VD, data=df_behavioural)       
         #plt.show()
+
+    
     for VD in VDs[0:7]:
         # Slect the dataframe
         #df = df_data[(df_data.last_delta==1) & (df_data.RT=="YES")][["Patients", "mean", "Global_mean", "label", "AgeAtDiagnosis", "CSP"]]
         #df = df_data[(df_data.Rang==1) & (df_data.RT=="YES")][["Patients", VD, "mean", "Global_mean", "label", "AgeAtDiagnosis", "CSP"]]
-        df= df_data[df_data.label==0][["Patients", "mean", "Global_mean", VD, "label", "AgeAtDiagnosis"]]
+        df= df_data[["Patients", "mean", "Global_mean", VD, "label", "AgeAtDiagnosis"]]
         df_drop = df.dropna(subset=[VD])
 
         # Select x and y 
@@ -86,23 +92,17 @@ if __name__ == '__main__':
         
         f_regression.write(str("Global_mean %s, y=%f x + %f, r:%f, r-squared:%f, \np-value:%f, std_err:%f"
         % (VD, beta, beta0, r_value, r_value**2, p_value, std_err)))
+        df_ScoreGlobalmean.loc[len(df_ScoreGlobalmean)] = ["Global_mean", VD, beta, r_value**2, p_value, std_err ]
+
+
+     
         # Plot the line
         yhat = beta * x + beta0  # regression line
         plt.plot(x, yhat, 'r-', x, y, 'o')
         plt.xlabel('Global mean')
         plt.ylabel(VD)
         #plt.show()
-        """
-        # New dataframe for VD without global effect
-        df_roi = pd.DataFrame(columns = ['Roi', VD, 'AgeAuDiagnostic', "meanRoi"])
-        df_roi['Roi'] = df_drop["label"]
-        df_roi['AgeAuDiagnostic'] = df_drop["AgeAtDiagnosis"]
-        df_roi['meanRoi'] = df_drop["mean"]
 
-
-        # Detrend global mean effect
-        Roi_effect = y - beta*x
-        df_roi[VD] = Roi_effect
 
         # Create list for roi
         name, rank, roi_label = read_roiLabel(xml_path)
@@ -110,48 +110,30 @@ if __name__ == '__main__':
         # Run the multiple regression models for each Roi
 
         for cnt, r in enumerate(roi_label):
-            # print "print handling roi %i" % r
-            X = np.array(df_roi[df_roi.Roi==r][['AgeAuDiagnostic', 'meanRoi']])
-            #X = np.array(df_roi[df_roi.Roi==r]['meanRoi'])
-            Y = np.array(df_roi[df_roi.
-                Roi==r][VD])
-            # Fit and summary:
-            model_GRT = sm.OLS(Y, X).fit()
-            print(model_GRT.summary())
-        
-            # Correction of multiple comparaison with Bonferronin
-            pvals_GR = model_GRT.pvalues
-            pvals_GR_fwer = multicomp.multipletests(pvals_GR, alpha = 0.05, method = 'bonferroni')
-           
-        """
 
-            X1 = np.array(df_drop[df_drop.label==r][['AgeAtDiagnosis', 'mean']])
+            X1 = np.array(df_drop[df_drop.label==r][['mean','Global_mean']])
+
             #X1 = np.array(df_drop[df_drop.label==r]["mean"])
             Y1 = np.array(df_drop[df_drop.label==r][VD])
             ## Fit and summary:
+            rho, pval = scipy.stats.spearmanr(X1,Y1)
             model_SGRT = sm.OLS(Y1, X1).fit()
-            print(model_SGRT.summary())
+            #print(model_SGRT.summary())
+            yAgeDia = np.array(df_drop[df_drop.label==r][['AgeAtDiagnosis']])
+            rho2, pval2 = scipy.stats.spearmanr(X1,yAgeDia)
+
 
             # Correction of multiple comparaison with Bonferroninipyth
             pvals = model_SGRT.pvalues
-            pvals_fwer = multicomp.multipletests(pvals, alpha = 0.05, method = 'bonferroni')
+            pvals_fwer = multicomp.multipletests(pvals, alpha = 0.05, method = 'fdr_bh')
 
-            """
-            # PLot the significant roi without global mean RT effect
-            pval_roi = pvals_GR_fwer[0]
-            
-            if pval_roi[1:2].astype(str) == "True":
-                
-                mask, roi_nii = get_roi_mask(atlas_nii, label_number)
-                output= os.path.join(maskfile,"%s.png"%(label_number))
-                plotting.plot_roi(roi_nii, anat_nii, output_file= output, title="plot_roi %s"%(label_number))
-            
-            else:
-                continue
-            """
             # concatenate all the results into a pd dataframe
-            df_final.loc[len(df_final)] = [VD, r, model_SGRT.params, model_SGRT.pvalues, pvals_fwer[1], pvals_fwer[0], model_SGRT.rsquared]
-            df_final_GR.loc[len(df_final)] = [VD, r, model_GRT.params, model_GRT.pvalues, pvals_GR_fwer[1], pvals_GR_fwer[0], model_SGRT.rsquared]
+            df_corrAgDvsRt.loc[len(df_corrAgDvsRt)] = [VD, r, rho2, pval2]
+            df_corr.loc[len(df_corr)] = [VD, r, rho, pval]
+            df_final.loc[len(df_final)] = [VD, r, model_SGRT.params, model_SGRT.tvalues, model_SGRT.pvalues, pvals_fwer[1], pvals_fwer[0], model_SGRT.rsquared, model_SGRT.bse]
+            #df_final_GR.loc[len(df_final)] = [VD, r, model_GRT.params, model_GRT.pvalues, pvals_GR_fwer[1], pvals_GR_fwer[0], model_SGRT.rsquared]
+
+
 
 
     f_regression.close()
