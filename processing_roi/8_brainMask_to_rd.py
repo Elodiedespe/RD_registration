@@ -10,7 +10,7 @@ import os
 import subprocess
 import pandas as pd
 import glob
-
+import nipype.interfaces.fsl as fsl
 # IO import
 import nibabel
 
@@ -33,18 +33,17 @@ def reorient_image(input_axes, in_file, output_dir):
     #print "Executing: '{0}'.".format(" ".join(cmd))
     subprocess.check_call(cmd)
     return reoriented_file
-
+"""
 def Extrac_brain(in_file, output_dir):
-    """ Extract the brain.
-    """
+  
     BrainMask_nii = os.path.join(subject_path, subj_id + "brain_mask.nii.gz")  
     Brainextrac_nii = os.path.join(subject_path, subj_id + "T1_brain.nii.gz") 
     
     cmd = ["Bet", in_file, Brainextrac_nii, "-f", str(0.5), "-g", str(0), "-m",BrainMask_nii ]
-    print "Executing: '{0}'.".format(" ".join(cmd))
     subprocess.check_call(cmd)
     
     return BrainMask_nii
+"""
     
 def BrainMask_to_ct(global_min_index, ct_cut_reoriented_nii, transformation, BrainMask_nii, output_dir):
     """ Register the brainMask to the CT.
@@ -261,7 +260,14 @@ if __name__ == "__main__":
                    'sujet_034_HI': 1, 'sujet_038_ZH': 1,
                    'sujet_012_OY':1.65}        
         
-        BrainMask_nii = Extrac_brain(t1_nii, output_dir)        
+        BrainMask_nii = os.path.join(output_dir, subj_id + "_brain_mask.nii.gz")  
+        Brainextrac_nii = os.path.join(output_dir, subj_id + "_T1_brain.nii.gz")
+        mybet = fsl.BET()
+        mybet.inputs.in_file = t1_nii
+        mybet.inputs.out_file = BrainMask_nii
+        mybet.inputs.frac = 0.5
+        mybet.inputs.mask = True
+        result = mybet.run()
         BrainMask_ct_nii = BrainMask_to_ct(cut_brain_index, ct_cut_reoriented_nii, transformation, BrainMask_nii, output_dir)
         
         BrainMask_ct_native_nii = os.path.join(output_dir,"BrainMask_to_ct_native.nii.gz" )
