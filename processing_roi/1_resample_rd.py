@@ -35,7 +35,7 @@ def readminf(file_minf):
     execfile(file_minf, globalVariables, localVariables)
 
     file_info = localVariables['attributes']
-    resolution = file_info['voxel_size'][:-1]
+    resolution = file_info['voxel_size']
     dimension = file_info['volume_dimension'][:-1]
     return resolution, dimension
 
@@ -61,8 +61,9 @@ def Resample(dim, res, rd_path, outputdir):
 
 if __name__ == "__main__":
     # Input File
-    subject_path = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/subject_24_rd_resample"
-    rd_paths = glob.glob(os.path.join(subject_path, "sujet*", "rd", "*.nii.gz"))
+    subject_path = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/sujet_10_rt/sujet_039_VF"
+    #rd_paths = glob.glob(os.path.join(subject_path, "sujet*", "rd", "*.nii.gz"))
+    rd_paths = glob.glob(os.path.join(subject_path, "rd", "*.nii.gz"))
     outputdir = os.path.join(subject_path, "results_rd+_resample_rd")
     if not os.path.exists(outputdir):
         os.makedirs(outputdir)
@@ -75,7 +76,9 @@ if __name__ == "__main__":
             os.makedirs(outputdir_Subj)
        
         sujet_minf = convert_nii_to_minf(rd_path)
+        print ("ok")
         resolution, dimension = readminf(sujet_minf)
+        print("ok2")
         dimension_finale = findsize(dimension, resolution, resolution_final)
         rd_resample = Resample(dimension_finale, resolution_final,
                                rd_path, outputdir_Subj)

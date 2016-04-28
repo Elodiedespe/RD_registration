@@ -194,7 +194,7 @@ if __name__ == "__main__":
 
 
     # Go through all subjects
-    for subject_path in valid_subject_dirs[1:2]:
+    for subject_path in valid_subject_dirs[15:16]:
         #subject_path = os.path.join(nii_path, 'sujet_024_VM')
         print "Processing: '{0}'...".format(subject_path)
 
@@ -260,11 +260,12 @@ if __name__ == "__main__":
                    'sujet_034_HI': 1, 'sujet_038_ZH': 1,
                    'sujet_012_OY':1.65}        
         
-        BrainMask_nii = os.path.join(output_dir, subj_id + "_brain_mask.nii.gz")  
-        Brainextrac_nii = os.path.join(output_dir, subj_id + "_T1_brain.nii.gz")
+
+        BrainMask_nii = os.path.join(output_dir, subj_id + "_brain_mask_mask.nii.gz")  
+        Brainextrac_nii = os.path.join(output_dir, subj_id + "_brain_mask.nii.gz")
         mybet = fsl.BET()
         mybet.inputs.in_file = t1_nii
-        mybet.inputs.out_file = BrainMask_nii
+        mybet.inputs.out_file = Brainextrac_nii
         mybet.inputs.frac = 0.5
         mybet.inputs.mask = True
         result = mybet.run()
