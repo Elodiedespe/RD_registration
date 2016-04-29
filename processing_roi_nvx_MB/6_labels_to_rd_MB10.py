@@ -8,6 +8,8 @@ import glob
 import subprocess
 # IO import
 import nibabel
+import nipype.interfaces.fsl as fsl
+
 
 def to_id(in_file):
     """ Convert file to itself (get .minf file).
@@ -27,14 +29,31 @@ def reorient_image(input_axes, in_file, output_dir):
     subprocess.check_call(cmd)
     return reoriented_file
     
+def ApplyAnts (transfo, in_file, ref_file, output_dir):    
+    # Apply the affine and warp transformation
+    in_file_transfo = os.path.join(output_dir,"BrainMask_to_cut_ct.nii.gz")
+    
+    cmd = "antsApplyTransforms " + \
+          " --float " + \
+          " --default-value 0 " + \
+          " --input %s " % (in_file) + \
+          " --input-image-type 3 " + \
+          " --interpolation NearestNeighbor " + \
+          " --output %s " % (in_file_transfo) + \
+          " --reference-image %s " % (ref_file) + \
+          " --transform %s " % (transfo)
+    print ( "executing: " + cmd)
+    os.system(cmd)
+    
+    return in_file_transfo
     
 def label_to_ctspace(ct_nii, label_to_ct_nii, global_min_index, output_dir):
-    # Apply the affine and warp transformation
 
     labels_ct_reo_nii =  os.path.join(output_dir, "labels_to_ct_reor.nii.gz")
-    labels_ct_native_nii = os.path.join(output_dir, "labels_to_ct_native.nii.gz")    
+    labels_ct_native_nii = os.path.join(output_dir, "BrainMask_to_ct_native.nii.gz")    
     
-    labels_ct_reo_nii = reorient_image("XXYY", label_to_ct_nii, output_dir)    
+    labels_ct_reo_nii = to_id(label_to_ct_nii)    
+    
     ct_im = nibabel.load(ct_nii)
     ct_data = ct_im.get_data()
     labels_data = nibabel.load(labels_ct_reo_nii).get_data()
@@ -77,7 +96,7 @@ def labels_to_rd(labels_ct_native_nii, rd_nii, correct_cta, output_dir):
     """
 
     # Output autocompletion
-    labels_rescale_file = os.path.join(output_dir, "labels_to_rd.nii.gz")
+    labels_rescale_file = os.path.join(output_dir, "BrainMask_to_rd.nii.gz")
 
     # Load images
     labels_ct_native_im = nibabel.load(labels_ct_native_nii)
@@ -156,7 +175,7 @@ if __name__ == "__main__":
     
 
     # Go through all subjects
-    for subject_path in valid_subject_dirs[4:5]:
+    for subject_path in valid_subject_dirs[3:4]:
         #subject_path = os.path.join(nii_path, 'sujet_024_VM')
         print "Processing: '{0}'...".format(subject_path)
 
@@ -178,16 +197,20 @@ if __name__ == "__main__":
         flip = df_subjects.flip[df_subjects.anonym_nom == subj_id].values[0]
 
         # Get the ct, the label_to_ct, the rd and brain_cut_index the patient
-        label_to_ct_nii = glob.glob(os.path.join(output_dir, "atlas", "*.nii.gz"))[0]
+        #label_to_ct_nii = glob.glob(os.path.join(output_dir, "atlas", "*.nii.gz"))[0]
         # reorient the registered label 
     
-            
+                
+        label_to_ct_nii = os.path.join(output_dir, "transform_InverseWarped.nii.gz")
+        template = "/neurospin/grip/protocols/MRI/dosimetry_elodie_2015/clemence/MB_10/ANTS9-5Years3T_head.nii.gz"
+        transfo_temp_to_ct = os.path.join(output_dir,"transformInverseComposite.h5")        
         ct_nii = os.path.join(subject_path, "ct", subj_id + "_ct.nii.gz")
         rd_nii = os.path.join(subject_path, "rd", "rd_resample.nii")
+        cut_ct = os.path.join(output_dir, "ct_cut_brain.nii.gz")
 
         print "Executing: %s" % (ct_nii)
         print "Executing: %s" % (rd_nii)
-        print "Executing: %s" % (label_to_ct_nii)
+       #print "Executing: %s" % (label_to_ct_nii)
         
         cut_brain_index_fileName = os.path.join(output_dir, "ct_brain_index.txt")
         cut_brain_index_file = open(cut_brain_index_fileName, "r")
@@ -195,13 +218,23 @@ if __name__ == "__main__":
         cut_brain_index_file.close()
 
         # Correct the Rzz in the ct affine to find the correct correspondance in the physical coordonnates
-        correct = {'sujet_027_BL': 1.274, 'sujet_040_DK': 1.293,
-                   'sujet_041_CA': 1.25, 'sujet_042_CO': 1,
+        correct = {'sujet_027_BL': 1.274, 'sujet_040_DK': 1.282,
+                   'sujet_041_CA': 1.17, 'sujet_042_CO': 1,
                    'sujet_043_MI': 1.25, 'sujet_044_DS': 1,
-                   'sujet_046_EN': 1.299, 'sujet_047_RS': 1,}
+                   'sujet_046_EN': 1.33, 'sujet_047_RS': 1,}
                    
         
-        labels_ct_native_nii = label_to_ctspace(ct_nii, label_to_ct_nii, cut_brain_index, output_dir)
-        labels_rd_nii = labels_to_rd(labels_ct_native_nii, rd_nii, correct[subj_id], output_dir)
-
-        
+        BrainMask_nii = os.path.join(output_dir, subj_id + "_brain_mask_mask.nii.gz")  
+        Brainextrac_nii = os.path.join(output_dir, subj_id + "_brain_mask.nii.gz")
+        mybet = fsl.BET()
+        mybet.inputs.in_file = template
+        mybet.inputs.out_file = Brainextrac_nii
+        mybet.inputs.frac = 0.5
+        mybet.inputs.mask = True
+        result = mybet.run()
+              
+        #labels_ct_native_nii = label_to_ctspace(ct_nii, label_to_ct_nii, cut_brain_index, output_dir)
+        #labels_rd_nii = labels_to_rd(labels_ct_native_nii, rd_nii, correct[subj_id], output_dir)
+        #label_to_ct_nii = ApplyAnts(transfo_temp_to_ct, BrainMask_nii, cut_ct, output_dir)
+        BrainMask_ct_native_nii = label_to_ctspace(ct_nii, label_to_ct_nii, cut_brain_index, output_dir)
+        BrainMask_rd_nii = labels_to_rd(BrainMask_ct_native_nii, rd_nii, correct[subj_id], output_dir)
